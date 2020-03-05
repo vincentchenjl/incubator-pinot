@@ -99,6 +99,7 @@ public class SqlResponseCacheLoader extends CacheLoader<SqlQuery, ThirdEyeResult
           dataSource.setPassword(prestoPassword);
           dataSource.setUrl(entry.getValue());
 
+
           // Timeout before an abandoned(in use) connection can be removed.
           dataSource.setRemoveAbandonedTimeout(ABANDONED_TIMEOUT);
           dataSource.setRemoveAbandoned(true);
@@ -359,7 +360,7 @@ public class SqlResponseCacheLoader extends CacheLoader<SqlQuery, ThirdEyeResult
    * @param dataset name of dataset
    * @return DataSource object: datasource for the dataset
    */
-  private DataSource getDataSourceFromDataset(String dataset) {
+  public DataSource getDataSourceFromDataset(String dataset) {
     String[] tableComponents = dataset.split("\\.");
     String sourceName = tableComponents[0];
     String dbName = tableComponents[1];
@@ -373,5 +374,31 @@ public class SqlResponseCacheLoader extends CacheLoader<SqlQuery, ThirdEyeResult
     } else {
       return h2DataSource;
     }
+  }
+
+
+  public static void main(String[] args) throws Exception {
+    Map<String, Object> configMap = new HashMap<>();
+    List<Map<String, Object>> prestoConfigList = new ArrayList<>();
+    Map<String, Object> prestoConfig = new HashMap<>();
+    prestoConfigList.add(prestoConfig);
+    prestoConfig.put(USER, "svc_pr_te");
+    prestoConfig.put(PASSWORD, "");
+    Map<String, String> dbMap = new HashMap<>();
+    dbMap.put("holdem", "jdbc:presto://presto.grid.linkedin.com:8443/hive?SSL=true");
+    prestoConfig.put(DB, dbMap);
+    configMap.put(PRESTO, prestoConfigList);
+    SqlResponseCacheLoader responseCacheLoader = new SqlResponseCacheLoader(configMap);
+    DataSource dataSource = responseCacheLoader.getDataSourceFromDataset("Presto.holdem");
+    try (Connection conn = dataSource.getConnection();
+        Statement stmt = conn.createStatement()) {
+//      ResultSet rs = stmt.executeQuery("select sum(total_pageviews) from u_metrics.pageviews_v2_union where datepartition = '2020-02-01-00'");
+      ResultSet rs = stmt.executeQuery("show catalogs");
+
+      while (rs.next()) {
+        System.out.println("Found catalog: " + rs.getString("Catalog"));
+      }
+    }
+
   }
 }
